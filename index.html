@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Semaphore Academy</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            --bg-main: #0f0f13;
+            --bg-card: #1a1a24;
+            --primary: #00ff88;
+            --accent: #ff3e6c;
+            --text: #ffffff;
+            --text-muted: #8a8a9e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            text-align: center;
+            background-color: var(--bg-main);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--primary), #00bcff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 25px;
+        }
+
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .mode-btn {
+            background: var(--bg-card);
+            color: var(--text-muted);
+            border: 2px solid #2d2d3d;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            color: var(--primary);
+            border-color: var(--primary);
+            background: rgba(0, 255, 136, 0.05);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .stat-box {
+            background: var(--bg-card);
+            padding: 15px 40px;
+            border-radius: 16px;
+            min-width: 120px;
+            border: 1px solid #2d2d3d;
+            border-left: 4px solid var(--primary);
+        }
+
+        .stat-box .label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .stat-box .count {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .main-layout {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .camera-wrapper {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            border: 2px solid #2d2d3d;
+            background: #000;
+        }
+
+        #webcam { 
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0.01;
+        }
+        
+        #output_canvas {
+            position: absolute;
+            left: 0; top: 0; width: 100%; height: 100%;
+            transform: scaleX(-1);
+        }
+
+        .panel-right {
+            width: 400px;
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: left;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border: 1px solid #2d2d3d;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #target-word-display {
+            font-size: 20px;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        #target-box {
+            font-size: 70px;
+            font-weight: 900;
+            color: #ffeb3b;
+            text-align: center;
+            background: #0f0f13;
+            border-radius: 16px;
+            padding: 15px;
+            margin: 10px 0 25px 0;
+            border: 2px dashed #ffeb3b;
+        }
+
+        #feedback {
+            font-size: 24px;
+            font-weight: 800;
+            padding: 18px;
+            margin-top: 20px;
+            border-radius: 12px;
+            display: block;
+            text-align: center;
+            letter-spacing: 1px;
+            background: #15151f;
+            border: 1px solid #2d2d3d;
+        }
+
+        .correct { color: var(--primary) !important; border-color: var(--primary) !important; background: rgba(0,255,136,0.1) !important; }
+        .incorrect { color: var(--accent) !important; border-color: var(--accent) !important; background: rgba(255,62,108,0.1) !important; }
+
+        .instruction-card {
+            background: #0f0f13;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #2d2d3d;
+            margin-top: 15px;
+            min-height: 120px;
+        }
+
+        .instruction-card h4 {
+            margin: 0 0 10px 0;
+            color: var(--text-muted);
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .instruction-card p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e1e1e6;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #2d2d3d, #1a1a24);
+            color: var(--text);
+            border: 1px solid #3d3d52;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: #2d2d3d;
+            border-color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>AI SEMAPHORE ACADEMY</h1>
+
+    <div class="mode-selector">
+        <button id="mode-char" class="mode-btn active" onclick="switchMode('CHAR')">Luyện Kí Tự Đơn</button>
+        <button id="mode-word" class="mode-btn" onclick="switchMode('WORD')">Luyện Từ Ngữ</button>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat-box">
+            <div class="label">Số Chữ Đúng</div>
+            <div id="stat-correct" class="count" style="color: var(--primary);">0</div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div>
+            <div class="camera-wrapper">
+                <video id="webcam" autoplay playsinline muted></video>
+                <canvas id="output_canvas" width="640" height="480"></canvas>
+            </div>
+            <div id="feedback">Đang kết nối camera...</div>
+        </div>
+
+        <div class="panel-right">
+            <div>
+                <div id="target-word-display">MỤC TIÊU HIỆN TẠI:</div>
+                <div id="target-box">?</div>
+                
+                <div class="instruction-card">
+                    <h4>Hướng dẫn điều chỉnh tư thế</h4>
+                    <p id="adjust-instruction">Đang tải mô hình...</p>
+                </div>
+            </div>
+            
+            <button class="action-btn" onclick="skipQuestion()">Bỏ qua kí tự này</button>
+        </div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const feedbackElement = document.getElementById('feedback');
+        const targetBox = document.getElementById('target-box');
+        const targetWordDisplay = document.getElementById('target-word-display');
+        const adjustInstructionElement = document.getElementById('adjust-instruction');
+        const statCorrectElement = document.getElementById('stat-correct');
+
+        const semaphoreDatabase = {
+            'A': { leftAngle: 135, rightAngle: 180, desc: "Tay TRÁI chéo xuống trái, tay PHẢI thẳng xuống." },
+            'B': { leftAngle: 90,  rightAngle: 180, desc: "Tay TRÁI ngang trái, tay PHẢI thẳng xuống." },
+            'C': { leftAngle: 45,  rightAngle: 180, desc: "Tay TRÁI chéo lên trái, tay PHẢI thẳng xuống." },
+            'D': { leftAngle: 0,   rightAngle: 180, desc: "Tay TRÁI thẳng lên, tay PHẢI thẳng xuống." },
+            'E': { leftAngle: 180, rightAngle: 225, desc: "Tay TRÁI thẳng xuống, tay PHẢI chéo xuống phải." },
+            'F': { leftAngle: 180, rightAngle: 270, desc: "Tay TRÁI thẳng xuống, tay PHẢI ngang phải." },
+            'G': { leftAngle: 180, rightAngle: 315, desc: "Tay TRÁI thẳng xuống, tay PHẢI chéo lên phải." },
+            'H': { leftAngle: 135, rightAngle: 225, desc: "Tay TRÁI chéo xuống trái, tay PHẢI chéo xuống phải." },
+            'I': { leftAngle: 90,  rightAngle: 225, desc: "Tay TRÁI ngang trái, tay PHẢI chéo xuống phải." },
+            'J': { leftAngle: 45,  rightAngle: 225, desc: "Tay TRÁI chéo lên trái, tay PHẢI chéo xuống phải." },
+            'K': { leftAngle: 0,   rightAngle: 225, desc: "Tay TRÁI thẳng lên, tay PHẢI chéo xuống phải." },
+            'L': { leftAngle: 135, rightAngle: 270, desc: "Tay TRÁI chéo xuống trái, tay PHẢI ngang phải." },
+            'M': { leftAngle: 90,  rightAngle: 270, desc: "Tay TRÁI ngang trái, tay PHẢI ngang phải." },
+            'N': { leftAngle: 45,  rightAngle: 270, desc: "Tay TRÁI chéo lên trái, tay PHẢI ngang phải." },
+            'O': { leftAngle: 0,   rightAngle: 270, desc: "Tay TRÁI thẳng lên, tay PHẢI ngang phải." },
+            'P': { leftAngle: 135, rightAngle: 315, desc: "Tay TRÁI chéo xuống trái, tay PHẢI chéo lên phải." },
+            'Q': { leftAngle: 90,  rightAngle: 315, desc: "Tay TRÁI ngang trái, tay PHẢI chéo lên phải." },
+            'R': { leftAngle: 45,  rightAngle: 315, desc: "Tay TRÁI chéo lên trái, tay PHẢI chéo lên phải." },
+            'S': { leftAngle: 225, rightAngle: 180, desc: "Tay TRÁI chéo xuống phải, tay PHẢI thẳng xuống." },
+            'T': { leftAngle: 270, rightAngle: 180, desc: "Tay TRÁI ngang phải, tay PHẢI thẳng xuống." },
+            'U': { leftAngle: 225, rightAngle: 225, desc: "Hai tay cùng chéo xuống." },
+            'V': { leftAngle: 315, rightAngle: 180, desc: "Tay TRÁI chéo lên phải, tay PHẢI thẳng xuống." },
+            'W': { leftAngle: 270, rightAngle: 225, desc: "Tay TRÁI ngang phải, tay PHẢI chéo xuống phải." },
+            'X': { leftAngle: 315, rightAngle: 225, desc: "Tay TRÁI chéo lên phải, tay PHẢI chéo xuống phải." },
+            'Y': { leftAngle: 270, rightAngle: 270, desc: "Hai tay ngang." },
+            'Z': { leftAngle: 315, rightAngle: 270, desc: "Tay TRÁI chéo lên phải, tay PHẢI ngang phải." }
+        };
+
+        const vocabularyList = ["BACS HOOF","QUANGR NINH","CAWPJ", "DIEENJ THOAIJ", "MAYS TINHS", "HOCJ SINH", "SEMAPHORE", "VIEETJ NAM","HAF NOOIJ", "KIM DDOONGF","PIANO","DDAIJ VIEETJ SUWR KYS TOANF THUW", "DDAIJ THAWS BACHJ DDAWNGF GIANG 1938", "THOAIJ NGOCJ HAAUF","DDOONGF BAWNGF SOONG CUUWR LONG","DDUOWNGF TRUOWNGF SOWN","HAIR PHONGF"];
+        
+        let currentMode = 'CHAR';
+        let currentTargetChar = "";
+        let currentWordIndex = 0;
+        let currentWordString = "";
+        
+        let countCorrect = 0;
+        let poseHoldCounter = 0;
+        const HOLD_REQUIRED_FRAMES = 20; 
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-char').classList.toggle('active', mode === 'CHAR');
+            document.getElementById('mode-word').classList.toggle('active', mode === 'WORD');
+            resetExercise();
+        }
+
+        function resetExercise() {
+            poseHoldCounter = 0;
+            if (currentMode === 'CHAR') {
+                targetWordDisplay.innerText = "MỤC TIÊU HIỆN TẠI:";
+                let chars = Object.keys(semaphoreDatabase);
+                currentTargetChar = chars[Math.floor(Math.random() * chars.length)];
+                targetBox.innerText = currentTargetChar;
+            } else {
+                currentWordString = vocabularyList[Math.floor(Math.random() * vocabularyList.length)];
+                currentWordIndex = 0;
+                if(currentWordString[currentWordIndex] === " ") currentWordIndex++;
+                currentTargetChar = currentWordString[currentWordIndex];
+                targetWordDisplay.innerText = `LUYỆN TỪ: ${currentWordString}`;
+                updateWordDisplay();
+            }
+            feedbackElement.innerText = "HÃY TẠO DÁNG!";
+            feedbackElement.className = "";
+            adjustInstructionElement.innerText = "Hãy đứng lùi ra xa để camera thấy rõ từ đầu đến thắt lưng của bạn.";
+        }
+
+        function updateWordDisplay() {
+            let highlighted = "";
+            for(let i=0; i<currentWordString.length; i++) {
+                if(currentWordString[i] === " ") {
+                    highlighted += " &nbsp; ";
+                    continue;
+                }
+                if(i === currentWordIndex) {
+                    highlighted += `<span style="color:#ffeb3b; text-decoration:underline;">${currentWordString[i]}</span>`;
+                } else if(i < currentWordIndex) {
+                    highlighted += `<span style="color:var(--primary); opacity:0.5;">${currentWordString[i]}</span>`;
+                } else {
+                    highlighted += `<span style="color:#fff;">${currentWordString[i]}</span>`;
+                }
+            }
+            targetBox.innerHTML = highlighted;
+        }
+
+        function skipQuestion() {
+            resetExercise();
+        }
+
+        function getAbsoluteAngle(shoulder, elbow) {
+            let dy = elbow.y - shoulder.y;
+            let dx = elbow.x - shoulder.x;
+            let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            
+            let convertedAngle = angle + 90;
+            if (convertedAngle < 0) convertedAngle += 360;
+            return convertedAngle;
+        }
+
+        function onResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.poseLandmarks) {
+                const leftShoulder = results.poseLandmarks[11];
+                const rightShoulder = results.poseLandmarks[12];
+                const leftElbow = results.poseLandmarks[13];
+                const rightElbow = results.poseLandmarks[14];
+
+                let currentLeftAngle = Math.round(getAbsoluteAngle(leftShoulder, leftElbow));
+                let currentRightAngle = Math.round(getAbsoluteAngle(rightShoulder, rightElbow));
+
+                const rule = semaphoreDatabase[currentTargetChar];
+                
+                let isLeftCorrect = Math.abs(currentLeftAngle - rule.leftAngle) < 28 || Math.abs(currentLeftAngle - rule.leftAngle) > 332;
+                let isRightCorrect = Math.abs(currentRightAngle - rule.rightAngle) < 28 || Math.abs(currentRightAngle - rule.rightAngle) > 332;
+
+                if (isLeftCorrect && isRightCorrect) {
+                    poseHoldCounter++;
+                    feedbackElement.innerText = "ĐÚNG!";
+                    feedbackElement.className = "correct";
+                    adjustInstructionElement.innerHTML = `<span style="color:var(--primary)">Chính xác! Giữ vững tư thế để hệ thống ghi nhận...</span>`;
+
+                    if (poseHoldCounter >= HOLD_REQUIRED_FRAMES) {
+                        countCorrect++;
+                        statCorrectElement.innerText = countCorrect;
+                        poseHoldCounter = 0;
+
+                        if (currentMode === 'CHAR') {
+                            resetExercise();
+                        } else {
+                            currentWordIndex++;
+                            if(currentWordIndex < currentWordString.length && currentWordString[currentWordIndex] === " ") {
+                                currentWordIndex++;
+                            }
+                            
+                            if (currentWordIndex >= currentWordString.length) {
+                                feedbackElement.innerText = "HOÀN THÀNH TỪ!";
+                                setTimeout(resetExercise, 1500);
+                            } else {
+                                currentTargetChar = currentWordString[currentWordIndex];
+                                updateWordDisplay();
+                            }
+                        }
+                    }
+                } else {
+                    poseHoldCounter = 0;
+                    feedbackElement.innerText = "CHƯA KHỚP!";
+                    feedbackElement.className = "incorrect";
+
+                    let advice = `<strong>Mẫu chữ ${currentTargetChar}:</strong> ${rule.desc}<br><br><strong>Hiện tại của bạn:</strong><br>`;
+                    advice += `• Tay TRÁI của bạn: ${currentLeftAngle}° (Mẫu: ${rule.leftAngle}°).<br>`;
+                    advice += `• Tay PHẢI của bạn: ${currentRightAngle}° (Mẫu: ${rule.rightAngle}°).`;
+                    adjustInstructionElement.innerHTML = advice;
+                }
+            } else {
+                poseHoldCounter = 0;
+                feedbackElement.innerText = "Không tìm thấy dáng người.";
+                feedbackElement.className = "";
+            }
+            canvasCtx.restore();
+        }
+
+        const pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
+        pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        pose.onResults(onResults);
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                videoElement.srcObject = stream;
+                
+                const camera = new Camera(videoElement, {
+                    onFrame: async () => { await pose.send({image: videoElement}); },
+                    width: 640, height: 480
+                });
+                camera.start().then(() => { resetExercise(); });
+            } catch (error) {
+                feedbackElement.innerText =
